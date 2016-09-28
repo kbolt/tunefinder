@@ -1,0 +1,207 @@
+import json
+import requests
+import configparser
+import operator
+from keys import tunefind
+from requests.auth import HTTPBasicAuth
+from pprint import pprint
+import datetime as dt
+from datetime import time
+import praw
+
+
+BASE_URL = 'https://www.tunefind.com/api/v1/show/'
+
+# Choose configfile based on day and time
+config = configparser.ConfigParser()
+config.read('showlist.ini')
+now = dt.datetime.now()
+today = now.strftime("%A")
+timenow = now.time()
+
+
+
+if timenow >= time(5,00) and timenow <= time(23,00):
+	print('Checking schedule...')
+	print(' '.join(["Getting show info for", today]))
+else:
+	print("Time is out of range")
+
+try:
+	# Sunday
+	if today == 'Sunday' and timenow >= time(5,00) and timenow <= time(23,00): 
+		show = config['Sunday']['show']
+		subreddit = config['Sunday']['subreddit']
+		print(' '.join(['Show found:',show]))
+
+	# Monday
+	elif today == 'Monday' and timenow >= time(22,00) and timenow <= time(23,00): 
+		show = config['Monday']['show']
+
+	# Tuesday
+	elif today == 'Tuesday' and timenow >= time(22,00) and timenow <= time(23,00): 
+		show = config['Tuesday']['show']
+
+	# Wednesday
+	elif today == 'Wednesday' and timenow >= time(22,00) and timenow <= time(23,00): 
+		show = config['Wednesday']['show']
+
+	# Thursday
+	elif today == 'Thursday' and timenow >= time(22,00) and timenow <= time(23,00): 
+		show = config['Thursday']['show']
+
+	# Friday
+	elif today == 'Friday' and timenow >= time(5,00) and timenow <= time(23,00): 
+		show = config['Friday']['show']
+
+	# Saturday
+	elif today == 'Saturday' and timenow >= time(9,00) and timenow <= time(23,00): 
+		show = config['Saturday']['show']
+		subreddit = config['Saturday']['subreddit']
+		print(show)
+		
+	else:
+		print('Something went wrong with the time schedule.')
+
+except:
+	print('Unable to get show details')
+
+
+# config.read('showinfo.txt')
+# show = config['show']['title']
+username = tunefind.username
+password = tunefind.password
+
+# Sort the list of seasons and then get the latest one
+def get_latest_season(show):
+
+	url = BASE_URL + show
+	r = requests.get(url, auth=HTTPBasicAuth(username, password))
+	data = r.json()
+	startingList = sorted([data['seasons'], []])
+	orderedList = max(startingList)
+	currentSeason = orderedList[-1]['number']
+
+# Get the latest episode of the latest season
+	fullUrl = BASE_URL + show + '/' + 'season-' + currentSeason
+
+	r = requests.get(fullUrl, auth=HTTPBasicAuth(username, password))
+	# data = r.json()
+
+	startingList = sorted([data['episodes'], []])
+	orderedList = max(startingList)
+	currentEp = orderedList[-1]['id']
+
+	# print(currentEp)
+	# print('\n'.join(['[show]',
+	# 				'season = ' + currentSeason,
+	# 				'title = ' + show,
+	# 				'epid = ' + currentEp]))
+
+	# Make a config file
+	print(' '.join(["Writing info for", show, "to config file..."]))
+	epInfo = configparser.ConfigParser()
+	epInfo['show'] = {'title': show,
+							'season': currentSeason,
+							'epID': currentEp
+							}
+
+
+	with open('test.ini', 'w') as configfile:
+		epInfo.write(configfile)
+
+get_latest_season(show)
+
+# Get song data
+BASE_URL = 'https://www.tunefind.com/api/v1/show/'
+config = configparser.ConfigParser()
+config.read('test.ini')
+show = config['show']['title']
+season = config['show']['season']
+epID = config['show']['epid']
+
+def get_show(show, season, epID):
+	
+	url = BASE_URL + show + '/' + 'season-' + season + '/' + epID
+	username = tunefind.username
+	password = tunefind.password
+	r = requests.get(url, auth=HTTPBasicAuth(username, password))
+	data = r.json()
+	# print("Performer | Song | Scene")
+	# print(":----------: | :-------------: | :-----")
+	header = "Performer | Song | Scene"
+	divider = ":----------: | :-------------: | :-----"
+
+	with open('tunes.txt', 'w') as configfile:
+				configfile.write('\n'.join(
+					["{0}", "{1}"]).format(header, divider))
+
+	# with open('tunes.txt', 'w') as configfile:
+	# 	configfile.write('\n'.join(
+	# 		["{0}", "{1}"]).format(header, divider))
+
+	for s in data['songs']:
+		artist = s['artist']['name']
+		song = s['name']
+		scene = s['scene']
+
+		with open('tunes.txt', 'a') as configfile:
+					configfile.write('\n'+'| '.join([artist, song, scene]))
+		
+		# print('| '.join([artist, song, scene]))
+
+get_show(show, season, epID)
+
+# Connect to reddit API
+config = configparser.ConfigParser()
+config.read('keys.txt')
+user = config['reddit']['user']
+pw = config['reddit']['pass']
+user_agent = ("Tunesfinder by /u/kidrocco"
+				"github/kbolt/Tunesfinder/")
+r = praw.Reddit(user_agent=user_agent)
+r.login(user, pw, disable_warning=True)
+
+phraseMatch = ['discussion', 'Discussion','recap']
+negWords = ['Live']
+cache = []
+
+def get_tunes(query):
+	submissions = r.get_subreddit(query)
+	stickyTitle = submissions.get_hot(limit=2)
+
+	for submission in stickyTitle:
+		title = submission.title.lower()
+		isMatch = any(string in title for string in phraseMatch)
+		ignore = any(string in title for string in negWords)
+
+		if submission.id not in cache and isMatch:
+			print('posting...')
+			with open('tunes.txt', 'r') as results:
+					submission.add_comment(results.read())
+		
+
+			# print("Match found. Posting soundtrack information...")
+			# submission.add_comment('\n'.join([
+			# 	"Performer | Song | Scene",
+			# 	":----------: | :-------------: | :-----"
+			# 	]))
+			# tunes = configparser.ConfigParser()
+			# 	('\n'.join([
+			# 	"Performer | Song | Scene",
+			# 	":----------: | :-------------: | :-----"
+			# 	]))
+			cache.append(submission.id)
+		elif submission.id in cache and isMatch:
+			print("No new topics found. No post was made.")
+		# print(isMatch)
+
+		print(submission.title)
+	# print(submissions.title)
+
+get_tunes(subreddit)
+
+# while True:
+# 		get_tunes('elementary')
+# 		time.sleep(3600)
+

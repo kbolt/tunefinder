@@ -1,0 +1,4 @@
+env
+*.pyc
+makeconfig.py
+keys.txt
