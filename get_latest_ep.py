@@ -8,6 +8,7 @@ from pprint import pprint
 import datetime as dt
 from datetime import time
 import praw
+import sqlite3
 
 
 BASE_URL = 'https://www.tunefind.com/api/v1/show/'
@@ -43,8 +44,9 @@ try:
 		show = config['Tuesday']['show']
 
 	# Wednesday
-	elif today == 'Wednesday' and timenow >= time(22,00) and timenow <= time(23,00): 
+	elif today == 'Wednesday' and timenow >= time(12,00) and timenow <= time(23,00): 
 		show = config['Wednesday']['show']
+		subreddit = config['Wednesday']['subreddit']
 
 	# Thursday
 	elif today == 'Thursday' and timenow >= time(22,00) and timenow <= time(23,00): 
@@ -86,7 +88,7 @@ def get_latest_season(show):
 	fullUrl = BASE_URL + show + '/' + 'season-' + currentSeason
 
 	r = requests.get(fullUrl, auth=HTTPBasicAuth(username, password))
-	# data = r.json()
+	data = r.json()
 
 	startingList = sorted([data['episodes'], []])
 	orderedList = max(startingList)
@@ -164,18 +166,25 @@ r.login(user, pw, disable_warning=True)
 
 phraseMatch = ['discussion', 'Discussion','recap']
 negWords = ['Live']
-cache = []
+
+conn = sqlite3.connect('tunefinder.db') 
+c = conn.cursor()
+
+
+c.execute('''CREATE TABLE IF NOT EXISTS cachedshows
+			(showTitle text, postID text)''')
 
 def get_tunes(query):
 	submissions = r.get_subreddit(query)
 	stickyTitle = submissions.get_hot(limit=2)
+	pastData = c.fetchall()
 
 	for submission in stickyTitle:
 		title = submission.title.lower()
 		isMatch = any(string in title for string in phraseMatch)
 		ignore = any(string in title for string in negWords)
 
-		if submission.id not in cache and isMatch:
+		if submission.id not in pastData and isMatch:
 			print('posting...')
 			with open('tunes.txt', 'r') as results:
 					submission.add_comment(results.read())
@@ -191,7 +200,9 @@ def get_tunes(query):
 			# 	"Performer | Song | Scene",
 			# 	":----------: | :-------------: | :-----"
 			# 	]))
-			cache.append(submission.id)
+			# cache.append(submission.id)
+			cache = [(title, submission.id)]
+			c.executemany('INSERT INTO cachedshows VALUES (?,?)', (cache))
 		elif submission.id in cache and isMatch:
 			print("No new topics found. No post was made.")
 		# print(isMatch)
@@ -205,3 +216,5 @@ get_tunes(subreddit)
 # 		get_tunes('elementary')
 # 		time.sleep(3600)
 
+c.close()
+conn.close()
