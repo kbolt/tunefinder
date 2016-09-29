@@ -44,13 +44,14 @@ try:
 		show = config['Tuesday']['show']
 
 	# Wednesday
-	elif today == 'Wednesday' and timenow >= time(12,00) and timenow <= time(23,00): 
+	elif today == 'Wednesday' and timenow >= time(1,00) and timenow <= time(23,59): 
 		show = config['Wednesday']['show']
 		subreddit = config['Wednesday']['subreddit']
 
 	# Thursday
-	elif today == 'Thursday' and timenow >= time(22,00) and timenow <= time(23,00): 
+	elif today == 'Thursday' and timenow >= time(0,00) and timenow <= time(23,00): 
 		show = config['Thursday']['show']
+		subreddit = config['Thursday']['subreddit']
 
 	# Friday
 	elif today == 'Friday' and timenow >= time(5,00) and timenow <= time(23,00): 
@@ -172,38 +173,37 @@ c = conn.cursor()
 
 
 c.execute('''CREATE TABLE IF NOT EXISTS cachedshows
-			(showTitle text, postID text)''')
+			(uid integer PRIMARY KEY AUTOINCREMENT,
+			 showTitle text, 
+			 postID text unique on conflict fail)''')
 
 def get_tunes(query):
 	submissions = r.get_subreddit(query)
 	stickyTitle = submissions.get_hot(limit=2)
-	pastData = c.fetchall()
+	
 
 	for submission in stickyTitle:
+		pastData = c.fetchall()
 		title = submission.title.lower()
+		showTitle = subreddit
+		postID = submission.id
+		uid = []
 		isMatch = any(string in title for string in phraseMatch)
 		ignore = any(string in title for string in negWords)
 
-		if submission.id not in pastData and isMatch:
+		if postID not in pastData and isMatch:
 			print('posting...')
-			with open('tunes.txt', 'r') as results:
-					submission.add_comment(results.read())
+			# with open('tunes.txt', 'r') as results:
+			# 		submission.add_comment(results.read())
 		
 
-			# print("Match found. Posting soundtrack information...")
-			# submission.add_comment('\n'.join([
-			# 	"Performer | Song | Scene",
-			# 	":----------: | :-------------: | :-----"
-			# 	]))
-			# tunes = configparser.ConfigParser()
-			# 	('\n'.join([
-			# 	"Performer | Song | Scene",
-			# 	":----------: | :-------------: | :-----"
-			# 	]))
-			# cache.append(submission.id)
-			cache = [(title, submission.id)]
-			c.executemany('INSERT INTO cachedshows VALUES (?,?)', (cache))
-		elif submission.id in cache and isMatch:
+			cache = [(showTitle, postID)]
+			try:
+				c.executemany('INSERT INTO cachedshows(showTitle, postID) VALUES (?,?)', (cache))
+				conn.commit()
+			except:
+				print("No new topics found. No post was made.")
+		elif postID in pastData and isMatch:
 			print("No new topics found. No post was made.")
 		# print(isMatch)
 
@@ -212,9 +212,6 @@ def get_tunes(query):
 
 get_tunes(subreddit)
 
-# while True:
-# 		get_tunes('elementary')
-# 		time.sleep(3600)
 
 c.close()
 conn.close()

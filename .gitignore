@@ -2,3 +2,7 @@ env
 *.pyc
 makeconfig.py
 keys.txt
+__pycache__
+keys.py
+tunefinder.db
+showlist.ini
