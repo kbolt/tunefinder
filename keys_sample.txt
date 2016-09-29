@@ -1,0 +1,7 @@
+[tunefind]
+username = user_key_here
+password = pass_key_here
+
+[reddit]
+user = your_bots_name
+pass = bot_pass

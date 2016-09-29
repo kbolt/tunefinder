@@ -110,7 +110,7 @@ def get_latest_season(show):
 							}
 
 
-	with open('test.ini', 'w') as configfile:
+	with open('episode.ini', 'w') as configfile:
 		epInfo.write(configfile)
 
 get_latest_season(show)
@@ -118,7 +118,7 @@ get_latest_season(show)
 # Get song data
 BASE_URL = 'https://www.tunefind.com/api/v1/show/'
 config = configparser.ConfigParser()
-config.read('test.ini')
+config.read('episode.ini')
 show = config['show']['title']
 season = config['show']['season']
 epID = config['show']['epid']
