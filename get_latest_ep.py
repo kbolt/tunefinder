@@ -2,7 +2,7 @@ import json
 import requests
 import configparser
 import operator
-from keys import tunefind
+# from keys import tunefind
 from requests.auth import HTTPBasicAuth
 from pprint import pprint
 import datetime as dt
@@ -40,8 +40,9 @@ try:
 		show = config['Monday']['show']
 
 	# Tuesday
-	elif today == 'Tuesday' and timenow >= time(22,00) and timenow <= time(23,00): 
+	elif today == 'Tuesday' and timenow >= time(5,00) and timenow <= time(23,00): 
 		show = config['Tuesday']['show']
+		subreddit = config['Tuesday']['subreddit']
 
 	# Wednesday
 	elif today == 'Wednesday' and timenow >= time(1,00) and timenow <= time(23,59): 
@@ -70,10 +71,10 @@ except:
 	print('Unable to get show details')
 
 
-# config.read('showinfo.txt')
+config.read('keys.txt')
 # show = config['show']['title']
-username = tunefind.username
-password = tunefind.password
+username = config['tunefind']['username']
+password = config['tunefind']['password']
 
 # Sort the list of seasons and then get the latest one
 def get_latest_season(show):
@@ -126,19 +127,23 @@ epID = config['show']['epid']
 def get_show(show, season, epID):
 	
 	url = BASE_URL + show + '/' + 'season-' + season + '/' + epID
-	username = tunefind.username
-	password = tunefind.password
+	# username = tunefind.username
+	# password = tunefind.password
 	r = requests.get(url, auth=HTTPBasicAuth(username, password))
 	data = r.json()
 	# print("Performer | Song | Scene")
 	# print(":----------: | :-------------: | :-----")
+	header0 = "Here is a list of songs from tonight's episode:" + '\n'
+	divider0 = "---" + '\n'
 	header = "Performer | Song | Scene"
 	divider = ":----------: | :-------------: | :-----"
+	divider2 = "---" 
+	footer = "Song data provided courtesy of [TuneFind](http://www.tunefind.com/api)." 
 
 	with open('tunes.txt', 'w') as configfile:
-				configfile.write('\n'.join(
-					["{0}", "{1}"]).format(header, divider))
-
+				configfile.write('\n'.join([header0, header, divider]))
+					
+										
 	# with open('tunes.txt', 'w') as configfile:
 	# 	configfile.write('\n'.join(
 	# 		["{0}", "{1}"]).format(header, divider))
@@ -150,6 +155,8 @@ def get_show(show, season, epID):
 
 		with open('tunes.txt', 'a') as configfile:
 					configfile.write('\n'+'| '.join([artist, song, scene]))
+	with open('tunes.txt', 'a') as configfile:
+					configfile.write('\n'.join([divider2, footer]))
 		
 		# print('| '.join([artist, song, scene]))
 
@@ -193,8 +200,8 @@ def get_tunes(query):
 
 		if postID not in pastData and isMatch:
 			print('posting...')
-			# with open('tunes.txt', 'r') as results:
-			# 		submission.add_comment(results.read())
+			with open('tunes.txt', 'r') as results:
+					submission.add_comment(results.read())
 		
 
 			cache = [(showTitle, postID)]
