@@ -138,7 +138,7 @@ def get_show(show, season, epID):
 	header = "Performer | Song | Scene"
 	divider = ":----------: | :-------------: | :-----"
 	divider2 = "---" 
-	footer = "Song data provided courtesy of [TuneFind](http://www.tunefind.com/api)." 
+	footer = "Song data provided courtesy of [TuneFind](http://www.tunefind.com)." 
 
 	with open('tunes.txt', 'w') as configfile:
 				configfile.write('\n'.join([header0, header, divider]))
